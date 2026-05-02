@@ -1,5 +1,7 @@
 <img src="https://user-images.githubusercontent.com/633843/32198822-e59a0fc4-be1d-11e7-9b92-03ce17ba05ba.png" alt="screenshot"/>
 
+> **Fork 修改版** — 修复了实时同步（velox State 未初始化导致列表不刷新）、SSE 连接（gzip 干扰）、已停止 torrent 残留导致卡顿等问题。
+
 **Cloud torrent** is a a self-hosted remote torrent client, written in Go (golang). You start torrents remotely, which are downloaded as sets of files on the local disk of the server, which are then retrievable or streamable via HTTP.
 
 ### Features
@@ -17,9 +19,7 @@ See [Future Features here](#future-features)
 
 **Binaries**
 
-[![Releases](https://img.shields.io/github/release/jpillora/cloud-torrent.svg)](https://github.com/jpillora/cloud-torrent/releases) [![Releases](https://img.shields.io/github/downloads/jpillora/cloud-torrent/total.svg)](https://github.com/jpillora/cloud-torrent/releases)
-
-See [the latest release](https://github.com/jpillora/cloud-torrent/releases/latest) or download and install it now with
+See [the latest release on jpillora/cloud-torrent](https://github.com/jpillora/cloud-torrent/releases/latest)
 
 ```
 curl https://i.jpillora.com/cloud-torrent! | bash
@@ -28,10 +28,6 @@ curl https://i.jpillora.com/cloud-torrent! | bash
 *Tip*: [Auto-run `cloud-torrent` on boot](https://github.com/jpillora/cloud-torrent/wiki/Auto-Run-on-Reboot)
 
 **Docker**
-
-[![Docker Pulls](https://img.shields.io/docker/pulls/jpillora/cloud-torrent.svg)][dockerhub]
-
-[dockerhub]: https://hub.docker.com/r/jpillora/cloud-torrent/
 
 ``` sh
 $ docker run -d -p 3000:3000 -v /path/to/my/downloads:/downloads jpillora/cloud-torrent
@@ -104,7 +100,7 @@ $ cloud-torrent --help
     0.X.Y
 
   Read more:
-    https://github.com/jpillora/cloud-torrent
+    https://github.com/hension-code/cloud-torrent
 
 ```
 
@@ -140,4 +136,4 @@ This project is the rewrite of the original [Node version](https://github.com/jp
 
 Credits to @anacrolix for https://github.com/anacrolix/torrent
 
-Copyright (c) 2017 Jaime Pillora
+Based on [jpillora/cloud-torrent](https://github.com/jpillora/cloud-torrent) — Copyright (c) 2017 Jaime Pillora
