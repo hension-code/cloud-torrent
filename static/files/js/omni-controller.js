@@ -134,14 +134,27 @@ app.controller("OmniController", function(
     }
   };
 
+  $scope.clearOmni = function($event) {
+    if ($event) {
+      $event.stopPropagation();
+    }
+    $scope.inputs.omni = "";
+    $scope.parse();
+  };
+
   $scope.submitTorrent = function() {
+    var p;
     if ($scope.mode.torrent) {
-      api.url($scope.inputs.omni);
+      p = api.url($scope.inputs.omni);
     } else if ($scope.mode.magnet) {
-      api.magnet($scope.inputs.omni);
+      p = api.magnet($scope.inputs.omni);
     } else {
       window.alert("UI Bug");
+      return;
     }
+    p.then(function() {
+      $scope.clearOmni();
+    });
   };
 
   $scope.submitSearch = function() {

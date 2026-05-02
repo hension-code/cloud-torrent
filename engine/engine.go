@@ -76,8 +76,11 @@ func (e *Engine) NewTorrent(spec *torrent.TorrentSpec) error {
 func (e *Engine) newTorrent(tt *torrent.Torrent) error {
 	t := e.upsertTorrent(tt)
 	go func() {
-		<-t.t.GotInfo()
-		e.StartTorrent(t.InfoHash)
+		select {
+		case <-t.t.GotInfo():
+			e.StartTorrent(t.InfoHash)
+		case <-time.After(10 * time.Minute):
+		}
 	}()
 	return nil
 }
@@ -91,8 +94,17 @@ func (e *Engine) GetTorrents() map[string]*Torrent {
 	if e.client == nil {
 		return nil
 	}
+	active := make(map[string]bool)
 	for _, tt := range e.client.Torrents() {
+		ih := tt.InfoHash().HexString()
+		active[ih] = true
 		e.upsertTorrent(tt)
+	}
+	// Remove stale entries that are no longer in the torrent client
+	for ih := range e.ts {
+		if !active[ih] {
+			delete(e.ts, ih)
+		}
 	}
 	return e.ts
 }

@@ -74,6 +74,12 @@ func (s *Server) Run(version string) error {
 	s.state.Stats.System.pusher = velox.Pusher(&s.state)
 	//init maps
 	s.state.Users = map[string]string{}
+	//initialize velox state for real-time sync
+	s.state.Data = func() (json.RawMessage, error) {
+		s.state.Lock()
+		defer s.state.Unlock()
+		return json.Marshal(&s.state)
+	}
 	//will use a the local embed/ dir if it exists, otherwise will use the hardcoded embedded binaries
 	s.files = http.HandlerFunc(s.serveFiles)
 	s.static = ctstatic.FileSystemHandler()
@@ -155,10 +161,19 @@ func (s *Server) Run(version string) error {
 	}
 	//define handler chain, from last to first
 	h := http.Handler(http.HandlerFunc(s.handle))
-	//gzip
-	compression := gzip.DefaultCompression
-	minSize := 0 //IMPORTANT
-	gzipWrap, _ := gziphandler.NewGzipLevelAndMinSize(compression, minSize)
+	//gzip - only compress static web content, not SSE streams
+	gzipWrap, _ := gziphandler.GzipHandlerWithOpts(
+		gziphandler.CompressionLevel(gzip.DefaultCompression),
+		gziphandler.MinSize(860),
+		gziphandler.ContentTypes([]string{
+			"text/html",
+			"text/css",
+			"text/javascript",
+			"application/javascript",
+			"application/json",
+			"image/svg+xml",
+		}),
+	)
 	h = gzipWrap(h)
 	//auth
 	if s.Auth != "" {
@@ -214,7 +229,7 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 	}
 	//handle realtime client connections
 	if r.URL.Path == "/sync" {
-		conn, err := velox.Sync(&s.state, w, r)
+		conn, err := s.state.Handle(w, r)
 		if err != nil {
 			log.Printf("sync failed: %s", err)
 			return

@@ -61,4 +61,10 @@
   right: 0;
   padding: 10px;
   cursor: pointer;
+  white-space: nowrap;
+}
+
+.icon-wrapper .remove.icon {
+  margin-right: 4px;
+  font-size: 0.9em;
 }
