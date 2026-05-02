@@ -6,6 +6,10 @@ app.controller("ConfigController", function($scope, $rootScope, storage, api) {
   $scope.toggle = function(b) {
     $scope.edit = b === undefined ? !$scope.edit : b;
   };
+  $scope.clampPositive = function(k, v) {
+    if (k === 'MinFreeDiskGB' && v < 0) return 0;
+    return v;
+  };
   $scope.submitConfig = function() {
     var data = JSON.stringify($rootScope.state.Config);
     api.configure(data);

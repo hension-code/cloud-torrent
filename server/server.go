@@ -104,6 +104,7 @@ func (s *Server) Run(version string) error {
 		DownloadDirectory: "./downloads",
 		EnableUpload:      true,
 		AutoStart:         true,
+		MinFreeDiskGB:  2.0, // 2GB default
 	}
 	if _, err := os.Stat(s.ConfigPath); err == nil {
 		if b, err := ioutil.ReadFile(s.ConfigPath); err != nil {
@@ -126,7 +127,24 @@ func (s *Server) Run(version string) error {
 			s.state.Lock()
 			s.state.Torrents = s.engine.GetTorrents()
 			s.state.Downloads = s.listFiles()
+			//auto-stop torrents when disk space is below threshold
+			minGB := s.state.Config.MinFreeDiskGB
+			var toStop []string
+			if minGB > 0 {
+				minFreeBytes := int64(minGB * 1024 * 1024 * 1024)
+				freeBytes := s.state.Stats.System.DiskTotal - s.state.Stats.System.DiskUsed
+				if freeBytes < minFreeBytes {
+					for ih, t := range s.state.Torrents {
+						if t.Started {
+							toStop = append(toStop, ih)
+						}
+					}
+				}
+			}
 			s.state.Unlock()
+			for _, ih := range toStop {
+				s.engine.StopTorrent(ih)
+			}
 			s.state.Push()
 			time.Sleep(1 * time.Second)
 		}
@@ -211,6 +229,9 @@ func (s *Server) reconfigure(c engine.Config) error {
 		return fmt.Errorf("Invalid path")
 	}
 	c.DownloadDirectory = dldir
+	if c.MinFreeDiskGB < 0 {
+		c.MinFreeDiskGB = 0
+	}
 	if err := s.engine.Configure(c); err != nil {
 		return err
 	}
