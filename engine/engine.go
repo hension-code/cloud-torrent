@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
+	"github.com/anacrolix/torrent/types"
 )
 
 // the Engine Cloud Torrent engine, backed by anacrolix/torrent
@@ -75,9 +77,19 @@ func (e *Engine) NewTorrent(spec *torrent.TorrentSpec) error {
 
 func (e *Engine) newTorrent(tt *torrent.Torrent) error {
 	t := e.upsertTorrent(tt)
+	// Immediately block all files to prevent auto-downloading before StartTorrent filters them
+	if tt.Info() != nil {
+		for _, f := range tt.Files() {
+			f.SetPriority(types.PiecePriorityNone)
+		}
+	}
 	go func() {
 		select {
 		case <-t.t.GotInfo():
+			// Metadata just arrived; cancel any auto-download that may have started
+			for _, f := range t.t.Files() {
+				f.SetPriority(types.PiecePriorityNone)
+			}
 			e.StartTorrent(t.InfoHash)
 		case <-time.After(10 * time.Minute):
 		}
@@ -150,13 +162,20 @@ func (e *Engine) StartTorrent(infohash string) error {
 		return fmt.Errorf("Already started")
 	}
 	t.Started = true
-	for _, f := range t.Files {
-		if f != nil {
-			f.Started = true
+	keywords := e.config.BlockedKeywords
+	if t.t.Info() != nil {
+		for _, f := range t.t.Files() {
+			if isBlocked(f.Path(), keywords) {
+				f.SetPriority(types.PiecePriorityNone)
+			} else {
+				f.Download()
+			}
 		}
 	}
-	if t.t.Info() != nil {
-		t.t.DownloadAll()
+	for _, f := range t.Files {
+		if f != nil {
+			f.Started = !isBlocked(f.Path, keywords)
+		}
 	}
 	return nil
 }
@@ -234,4 +253,18 @@ func str2ih(str string) (metainfo.Hash, error) {
 		return ih, fmt.Errorf("Invalid length")
 	}
 	return ih, nil
+}
+
+func isBlocked(path string, blockedKeywords string) bool {
+	if blockedKeywords == "" {
+		return false
+	}
+	lower := strings.ToLower(path)
+	for _, kw := range strings.Split(blockedKeywords, ",") {
+		kw = strings.TrimSpace(kw)
+		if kw != "" && strings.Contains(lower, strings.ToLower(kw)) {
+			return true
+		}
+	}
+	return false
 }

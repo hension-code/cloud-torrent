@@ -7,5 +7,6 @@ type Config struct {
 	EnableUpload      bool
 	EnableSeeding     bool
 	IncomingPort      int
-	MinFreeDiskGB  float64
+	MinFreeDiskGB   float64
+	BlockedKeywords string
 }

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/anacrolix/torrent"
+	"github.com/anacrolix/torrent/types"
 )
 
 type Torrent struct {
@@ -30,9 +31,10 @@ type File struct {
 	Chunks    int
 	Completed int
 	//cloud torrent
-	Started bool
-	Percent float32
-	f       *torrent.File
+	Started  bool
+	Skipped  bool
+	Percent  float32
+	f        *torrent.File
 }
 
 func (torrent *Torrent) Update(t *torrent.Torrent) {
@@ -75,14 +77,22 @@ func (torrent *Torrent) updateLoaded(t *torrent.Torrent) {
 		file.Completed = completed
 		file.Percent = percent(int64(file.Completed), int64(file.Chunks))
 		file.f = f
+		file.Skipped = f.Priority() == types.PiecePriorityNone
 
-		totalChunks += file.Chunks
-		totalCompleted += file.Completed
+		if !file.Skipped {
+			totalChunks += file.Chunks
+			totalCompleted += file.Completed
+		} else {
+			torrent.Size -= file.Size
+		}
 	}
 
 	//cacluate rate
 	now := time.Now()
 	bytes := t.BytesCompleted()
+	if bytes > torrent.Size {
+		bytes = torrent.Size
+	}
 	torrent.Percent = percent(bytes, torrent.Size)
 	if !torrent.updatedAt.IsZero() {
 		dt := float32(now.Sub(torrent.updatedAt))
