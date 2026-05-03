@@ -169,12 +169,15 @@ func (e *Engine) StopTorrent(infohash string) error {
 	if !t.Started {
 		return fmt.Errorf("Already stopped")
 	}
-	//there is no stop - kill underlying torrent
-	t.t.Drop()
 	t.Started = false
 	for _, f := range t.Files {
 		if f != nil {
 			f.Started = false
+		}
+	}
+	if t.t != nil && t.t.Info() != nil {
+		for _, f := range t.t.Files() {
+			f.Cancel()
 		}
 	}
 	return nil
